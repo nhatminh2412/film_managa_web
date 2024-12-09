@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý nhân viên</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2>Quản lý nhân viên</h2>
+            <div class="form-group">
+                <label for="employee-name">Tên nhân viên</label>
+                <input type="text" id="employee-name" placeholder="Nhập tên nhân viên">
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" placeholder="Nhập email">
+            </div>
+
+            <div class="form-group">
+                <label for="role">Vai trò</label>
+                <select id="role">
+                    <option value="Khai thác phim">Khai thác phim</option>
+                    <option value="Dịch phim">Dịch phim</option>
+                    <option value="Phát hành phim">Phát hành phim</option>
+                    <option value="Quản lý">Quản lý</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Mật khẩu</label>
+                <input type="password" id="password" placeholder="Nhập mật khẩu">
+            </div>
+
+            <div class="form-buttons">
+                <button class="add-btn" id="add-btn">Thêm</button>
+                <button class="edit-btn" id="edit-btn">Sửa</button>
+                <button class="delete-btn" id="delete-btn">Xóa</button>
+                <button class="exit-btn" id="exit-btn">Thoát</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="employees-table">
+                <thead>
+                    <tr>
+                        <th>Tên nhân viên</th>
+                        <th>Vai trò</th>
+                        <th>Email</th>
+                        <th>Mật khẩu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dữ liệu sẽ được thêm động tại đây -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            let selectedEmployeeId = null; // ID nhân viên được chọn
+
+            // Hàm tải danh sách nhân viên
+            function loadEmployees() {
+                $.get('/api/employees/', function (data) {
+                    const employeesTable = $('#employees-table tbody');
+                    employeesTable.empty();
+
+                    data.forEach(emp => {
+                        employeesTable.append(`
+                            <tr data-id="${emp.employee_id}">
+                                <td>${emp.full_name}</td>
+                                <td>${emp.role}</td>
+                                <td>${emp.email}</td>
+                                <td>******</td>
+                            </tr>
+                        `);
+                    });
+                });
+            }
+
+            // Chọn nhân viên
+            $('#employees-table').on('click', 'tr', function () {
+                const row = $(this);
+                selectedEmployeeId = row.data('id');
+                const cells = row.children('td');
+
+                $('#employee-name').val(cells.eq(0).text());
+                $('#role').val(cells.eq(1).text());
+                $('#email').val(cells.eq(2).text());
+                $('#password').val(''); // Không hiển thị mật khẩu
+
+                $('#employees-table tr').removeClass('selected');
+                row.addClass('selected');
+            });
+
+            // Thêm nhân viên
+            $('#add-btn').click(function () {
+                const full_name = $('#employee-name').val();
+                const email = $('#email').val();
+                const role = $('#role').val();
+                const password = $('#password').val();
+            
+                if (!full_name || !email || !role || !password) {
+                    alert('Vui lòng điền đầy đủ thông tin!');
+                    return;
+                }
+            
+                const csrftoken = $('meta[name="csrf-token"]').attr('content');
+            
+                $.ajax({
+                    url: '/api/employees/add/',
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrftoken },
+                    data: JSON.stringify({ full_name, email, role, password }),
+                    contentType: 'application/json',
+                    success: function (response) {
+                        alert(response.message);
+                        loadEmployees();
+                    },
+                    error: function (xhr) {
+                        alert(`Lỗi: ${xhr.responseJSON.error}`);
+                    }
+                });
+            });
+
+            // Sửa nhân viên
+            $('#edit-btn').click(function () {
+                if (!selectedEmployeeId) {
+                    alert('Vui lòng chọn một nhân viên để sửa!');
+                    return;
+                }
+
+                const full_name = $('#employee-name').val();
+                const email = $('#email').val();
+                const role = $('#role').val();
+                const password = $('#password').val();
+
+                $.ajax({
+                    url: `/api/employees/edit/${selectedEmployeeId}/`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ full_name, email, role, password }),
+                    success: function (response) {
+                        alert(response.message);
+                        loadEmployees();
+                    },
+                    error: function () {
+                        alert('Có lỗi xảy ra khi sửa thông tin nhân viên.');
+                    }
+                });
+            });
+
+            // Xóa nhân viên
+            $('#delete-btn').click(function () {
+                if (!selectedEmployeeId) {
+                    alert('Vui lòng chọn một nhân viên để xóa!');
+                    return;
+                }
+            
+                $.ajax({
+                    url: `/api/employees/delete/${selectedEmployeeId}/`,  // URL đúng với ID nhân viên
+                    method: 'DELETE',  // Phương thức DELETE 
+                    success: function (response) {
+                        alert(response.message);
+                        loadEmployees();  // Tải lại danh sách nhân viên
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Có lỗi xảy ra khi xóa nhân viên: ' + xhr.responseText);
+                    }
+                });
+            });
+                    
+            
+
+            // Thoát
+            $('#exit-btn').click(function () {
+                window.location.href = '/login';
+            });
+
+            // Tải dữ liệu khi trang được tải
+            loadEmployees();
+        });
+    </script>
+
+    <style>
+        .selected {
+            background-color: #f0f8ff;
+        }
+    </style>
+</body>
+</html>

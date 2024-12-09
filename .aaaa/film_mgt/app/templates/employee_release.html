@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý phát hành phim</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2>Quản lý phát hành phim</h2>
+            <div class="form-group">
+                <label for="movie-name">Tên phim</label>
+                <select id="movie-name">
+                    <!-- Tên phim sẽ được tải từ bảng Movie -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="release-date">Ngày phát hành</label>
+                <input type="date" id="release-date">
+            </div>
+
+            <div class="form-group">
+                <label for="release-status">Trạng thái</label>
+                <select id="release-status">
+                    <option value="Chưa phát hành">Chưa phát hành</option>
+                    <option value="Đang phát hành">Đang phát hành</option>
+                    <option value="Đã phát hành">Đã phát hành</option>
+                </select>
+            </div>
+
+            <div class="form-buttons">
+                <button class="add-btn" onclick="addRelease()">Thêm phát hành</button>
+                <button class="delete-btn" onclick="deleteRelease()">Xóa phát hành</button>
+                <button class="edit-btn" onclick="editRelease()">Sửa thông tin</button>
+                <button class="save-btn">Lưu</button>
+                <button class="exit-btn" id="exit-btn">Thoát</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="releases-table">
+                <thead>
+                    <tr>
+                        <th>Tên phim</th>
+                        <th>Ngày phát hành</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dữ liệu sẽ được thêm vào đây -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Hàm tải danh sách phim từ bảng Movie
+        function loadMovies() {
+            $.get('/movies', function(data) {
+                let movieSelect = $('#movie-name');
+                movieSelect.empty();
+                data.forEach(function(movie) {
+                    movieSelect.append(`<option value="${movie.movie_id}">${movie.title}</option>`);
+                });
+            });
+        }
+
+        // Hàm thêm phát hành
+        function addRelease() {
+            const movieId = $('#movie-name').val();
+            const releaseDate = $('#release-date').val();
+            const releaseStatus = $('#release-status').val();
+
+            $.post('/releases', { movieId, releaseDate, releaseStatus }, function(response) {
+                alert(response.message);
+                loadReleases();
+            });
+        }
+
+        // Hàm tải danh sách phát hành
+        function loadReleases() {
+            $.get('/releases', function(data) {
+                let releasesTable = $('#releases-table tbody');
+                releasesTable.empty();
+                data.forEach(function(release) {
+                    releasesTable.append(`
+                        <tr>
+                            <td>${release.movie_title}</td>
+                            <td>${release.release_date}</td>
+                            <td>${release.status}</td>
+                            <td>
+                                <button onclick="editRelease(${release.release_id})">Sửa</button>
+                                <button onclick="deleteRelease(${release.release_id})">Xóa</button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            });
+        }
+
+        // Khi trang load, lấy danh sách phim và phát hành
+        $(document).ready(function() {
+            loadMovies();
+            loadReleases();
+        });
+
+        $('#exit-btn').click(function () {
+            window.location.href = '/login';  // Điều hướng đến trang đăng nhập
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý bản dịch phim</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2>Quản lý bản dịch phim</h2>
+            <div class="form-group">
+                <label for="movie-name">Tên phim</label>
+                <select id="movie-name">
+                    <!-- Tên phim sẽ được tải từ bảng Movie -->
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="language">Ngôn ngữ</label>
+                <input type="text" id="language" placeholder="Nhập ngôn ngữ">
+            </div>
+
+            <div class="form-group">
+                <label for="translator-name">Tên người dịch</label>
+                <input type="text" id="translator-name" placeholder="Nhập tên người dịch">
+            </div>
+
+            <div class="form-group">
+                <label for="status">Trạng thái</label>
+                <select id="status">
+                    <option value="Chưa hoàn thành">Chưa hoàn thành</option>
+                    <option value="Đang dịch">Đang dịch</option>
+                    <option value="Hoàn thành">Hoàn thành</option>
+                </select>
+            </div>
+
+            <div class="form-buttons">
+                <button class="add-btn" onclick="addTranslation()">Thêm bản dịch</button>
+                <button class="delete-btn" onclick="deleteTranslation()">Xóa bản dịch</button>
+                <button class="edit-btn" onclick="editTranslation()">Sửa thông tin</button>
+                <button class="save-btn">Lưu</button>
+                <button class="exit-btn" id="exit-btn">Thoát</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="translations-table">
+                <thead>
+                    <tr>
+                        <th>Tên phim</th>
+                        <th>Ngôn ngữ</th>
+                        <th>Người dịch</th>
+                        <th>Trạng thái</th>
+                        <th>Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dữ liệu sẽ được thêm vào đây -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        // Hàm tải danh sách phim từ bảng Movie
+        function loadMovies() {
+            $.get('/api/movies', function(data) {
+                const movieSelect = $('#movie-select');
+                movieSelect.empty();
+                movieSelect.append('<option value="" disabled selected>Chọn một bộ phim</option>');
+                data.forEach(movie => {
+                    movieSelect.append(`<option value="${movie.movie_id}">${movie.title}</option>`);
+                });
+            });
+        }
+
+        // Hàm thêm bản dịch
+        function addTranslation() {
+            const movieId = $('#movie-name').val();
+            const language = $('#language').val();
+            const translatorName = $('#translator-name').val();
+            const status = $('#status').val();
+
+            $.post('/translations', { movieId, language, translatorName, status }, function(response) {
+                alert(response.message);
+                loadTranslations();
+            });
+        }
+
+        // Hàm tải danh sách bản dịch
+        function loadTranslations() {
+            $.get('/translations', function(data) {
+                let translationsTable = $('#translations-table tbody');
+                translationsTable.empty();
+                data.forEach(function(translation) {
+                    translationsTable.append(`
+                        <tr>
+                            <td>${translation.movie_title}</td>
+                            <td>${translation.language}</td>
+                            <td>${translation.translator_name}</td>
+                            <td>${translation.status}</td>
+                            <td>
+                                <button onclick="editTranslation(${translation.translation_id})">Sửa</button>
+                                <button onclick="deleteTranslation(${translation.translation_id})">Xóa</button>
+                            </td>
+                        </tr>
+                    `);
+                });
+            });
+        }
+        
+        // Khi trang load, lấy danh sách phim và bản dịch
+        $(document).ready(function() {
+            loadMovies();
+            loadTranslations();
+        });
+        $('#exit-btn').click(function () {
+            window.location.href = '/login';  // Điều hướng đến trang đăng nhập
+        });
+    </script>
+</body>
+</html>

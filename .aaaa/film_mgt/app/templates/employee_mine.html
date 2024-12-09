@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản lý phim</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta name="csrf-token" content="{{ csrf_token }}">
+</head>
+<body>
+    <div class="container">
+        <div class="form-container">
+            <h2>Quản lý phim</h2>
+            <div class="form-group">
+                <label for="movie-title">Tên phim</label>
+                <input type="text" id="movie-title" placeholder="Nhập tên phim">
+            </div>
+
+            <div class="form-group">
+                <label for="release-year">Năm phát hành</label>
+                <input type="number" id="release-year" placeholder="Nhập năm phát hành">
+            </div>
+
+            <div class="form-group">
+                <label for="genre">Thể loại</label>
+                <input type="text" id="genre" placeholder="Nhập thể loại">
+            </div>
+
+            <div class="form-group">
+                <label for="description">Mô tả</label>
+                <textarea id="description" rows="4" placeholder="Nhập mô tả về phim"></textarea>
+            </div>
+
+            <div class="form-buttons">
+                <button class="add-btn" id="add-btn">Thêm</button>
+                <button class="edit-btn" id="edit-btn">Sửa</button>
+                <button class="delete-btn" id="delete-btn">Xóa</button>
+                <button class="exit-btn" id="exit-btn">Thoát</button>
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table id="movies-table">
+                <thead>
+                    <tr>
+                        <th>Tên phim</th>
+                        <th>Năm phát hành</th>
+                        <th>Thể loại</th>
+                        <th>Mô tả</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <!-- Dữ liệu sẽ được thêm động tại đây -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        $(document).ready(function () {
+            let selectedMovieId = null; // ID phim được chọn
+
+            // Hàm tải danh sách phim
+            function loadMovies() {
+                $.get('/api/movies/', function (data) {
+                    const moviesTable = $('#movies-table tbody');
+                    moviesTable.empty();
+
+                    data.forEach(movie => {
+                        moviesTable.append(`
+                            <tr data-id="${movie.movie_id}">
+                                <td>${movie.title}</td>
+                                <td>${movie.release_year}</td>
+                                <td>${movie.genre}</td>
+                                <td>${movie.description}</td>
+                            </tr>
+                        `);
+                    });
+                });
+            }
+
+            // Chọn phim
+            $('#movies-table').on('click', 'tr', function () {
+                const row = $(this);                
+                selectedMovieId = row.data('id'); // Lấy id của phim từ thuộc tính data-id
+                const cells = row.children('td');
+                
+                console.log("Selected Movie ID: ", selectedMovieId);  // Thêm dòng này để kiểm tra
+
+                // Kiểm tra xem có id phim không
+                if (!selectedMovieId) {
+                    alert('Không có ID phim!');
+                    return;
+                }
+
+                // Cập nhật các trường input tương ứng với thông tin phim
+                $('#movie-title').val(cells.eq(0).text());
+                $('#release-year').val(cells.eq(1).text());
+                $('#genre').val(cells.eq(2).text());
+                $('#description').val(cells.eq(3).text());
+                
+                // Đánh dấu dòng đã chọn
+                $('#movies-table tr').removeClass('selected');
+                row.addClass('selected');
+            });
+
+
+            
+
+            // Thêm phim
+            $('#add-btn').click(function () {
+                const title = $('#movie-title').val();
+                const releaseYear = $('#release-year').val();
+                const genre = $('#genre').val();
+                const description = $('#description').val();
+
+                if (!title || !releaseYear || !genre || !description) {
+                    alert('Vui lòng điền đầy đủ thông tin!');
+                    return;
+                }
+
+                const csrftoken = $('meta[name="csrf-token"]').attr('content');
+
+                $.ajax({
+                    url: '/api/movies/add/',
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrftoken },
+                    data: JSON.stringify({ title, release_year: releaseYear, genre, description }),
+                    contentType: 'application/json',
+                    success: function (response) {
+                        alert(response.message);
+                        loadMovies();
+                    },
+                    error: function (xhr) {
+                        alert(`Lỗi: ${xhr.responseJSON.error}`);
+                    }
+                });
+            });
+
+            // Sửa phim
+            $('#edit-btn').click(function () {
+                if (!selectedMovieId) {
+                    alert('Vui lòng chọn một phim để sửa!');
+                    return;
+                }
+            
+                const title = $('#movie-title').val();
+                const releaseYear = $('#release-year').val();
+                const genre = $('#genre').val();
+                const description = $('#description').val();
+            
+                $.ajax({
+                    url: `/api/movies/edit/${selectedMovieId}/`,  // Sử dụng selectedMovieId
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ title, release_year: releaseYear, genre, description }),
+                    success: function (response) {
+                        alert(response.message);
+                        loadMovies();
+                    },
+                    error: function () {
+                        alert('Có lỗi xảy ra khi sửa thông tin phim.');
+                    }
+                });
+            });
+            
+
+            // Xóa phim
+            $('#delete-btn').click(function () {
+                if (!selectedMovieId) {
+                    alert('Vui lòng chọn một phim để xóa!');
+                    return;
+                }
+            
+                $.ajax({
+                    url: `/api/movies/delete/${selectedMovieId}/`,  // Sử dụng selectedMovieId
+                    method: 'DELETE',
+                    success: function (response) {
+                        alert(response.message);
+                        loadMovies();
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Có lỗi xảy ra khi xóa phim: ' + xhr.responseText);
+                    }
+                });
+            });
+            
+            // Thoát
+            $('#exit-btn').click(function () {
+                window.location.href = '/login';
+            });
+
+            // Tải dữ liệu khi trang được tải
+            loadMovies();
+        });
+    </script>
+
+    <style>
+        .selected {
+            background-color: #f0f8ff;
+        }
+    </style>
+</body>
+</html>

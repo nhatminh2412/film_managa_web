@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đặt Phim - Khách Hàng</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="form-container">
+        <h2>Quản lý đơn đặt phim</h2>
+        
+        <div class="form-group">
+            <label for="partner-name">Tên khách hàng</label>
+            <input type="text" id="partner-name" disabled>
+        </div>
+
+        <div class="form-group">
+            <label for="movie-select">Chọn phim</label>
+            <select id="movie-select" required>
+                <option value="" disabled selected>Chọn một bộ phim</option>
+                <!-- Danh sách phim sẽ được tải động từ API -->
+            </select>
+        </div>
+
+        <div class="form-buttons">
+            <button class="add-btn" onclick="addOrder()">Đặt Phim</button>
+            <button class="edit-btn" onclick="editOrder()">Sửa Đơn</button>
+            <button class="delete-btn" onclick="deleteOrder()">Xóa Đơn</button>
+            <button class="exit-btn" id="exit-btn">Thoát</button>
+        </div>
+    </div>
+
+    <div class="table-container">
+        <h3>Danh sách phim đã đặt</h3>
+        <table id="orders-table">
+            <thead>
+                <tr>
+                    <th>Tên phim</th>
+                    <th>Ngày đặt</th>
+                </tr>
+            </thead>
+            <tbody id="orders-table-body">
+                <!-- Dữ liệu sẽ được thêm vào đây -->
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        const partnerId = 123; // Giả sử partnerId được lấy từ session hoặc backend.
+
+        // Hàm tải thông tin Partner (Khách hàng) đã đăng nhập
+        function loadPartner() {
+            $.get(`/api/partners/${partnerId}`, function(data) {
+                $('#partner-name').val(data.full_name);
+            });
+        }
+
+        // Hàm tải danh sách phim cho select
+        function loadMovies() {
+            $.get('/api/movies', function(data) {
+                const movieSelect = $('#movie-select');
+                movieSelect.empty();
+                movieSelect.append('<option value="" disabled selected>Chọn một bộ phim</option>');
+                data.forEach(movie => {
+                    movieSelect.append(`<option value="${movie.movie_id}">${movie.title}</option>`);
+                });
+            });
+        }
+
+        // Hàm tải danh sách đơn đặt phim của Partner
+        function loadOrders() {
+            $.get(`/api/orders?partnerId=${partnerId}`, function(data) {
+                const ordersTableBody = $('#orders-table-body');
+                ordersTableBody.empty();
+                data.forEach(order => {
+                    ordersTableBody.append(`
+                        <tr>
+                            <td>${order.movie_title}</td>
+                            <td>${order.order_date}</td>
+                        </tr>
+                    `);
+                });
+            });
+        }
+
+        // Hàm thêm đơn đặt phim
+        function addOrder() {
+            const movieId = $('#movie-select').val();
+
+            if (movieId) {
+                $.post('/api/orders', { partnerId, movieId }, function(response) {
+                    alert(response.message);
+                    loadOrders(); // Cập nhật danh sách đơn đặt
+                });
+            } else {
+                alert('Vui lòng chọn một bộ phim.');
+            }
+        }
+
+        // Sửa thông tin đơn đặt phim
+        function editOrder() {
+            alert('Chức năng sửa đơn đặt phim đang được phát triển!');
+            // Xử lý sửa đơn đặt phim tại đây.
+        }
+
+        // Xóa đơn đặt phim
+        function deleteOrder() {
+            alert('Chức năng xóa đơn đặt phim đang được phát triển!');
+            // Xử lý xóa đơn đặt phim tại đây.
+        }
+
+        // Khi trang load, tải dữ liệu ban đầu
+        loadPartner();  // Tải thông tin partner
+        loadMovies();   // Tải danh sách phim
+        loadOrders();   // Tải danh sách đơn đặt
+    });
+
+    $('#exit-btn').click(function () {
+        window.location.href = '/login';  // Điều hướng đến trang đăng nhập
+    });
+</script>
+
+</body>
+</html>
