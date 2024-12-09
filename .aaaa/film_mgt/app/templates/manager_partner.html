@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý nhân viên</title>
+    <title>Quản lý khách hàng</title>
     <link rel="stylesheet" href="../static/style.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <meta name="csrf-token" content="{{ csrf_token }}">
@@ -11,10 +11,10 @@
 <body>
     <div class="container">
         <div class="form-container">
-            <h2>Quản lý nhân viên</h2>
+            <h2>Quản lý khách hàng</h2>
             <div class="form-group">
-                <label for="employee-name">Tên nhân viên</label>
-                <input type="text" id="employee-name" placeholder="Nhập tên nhân viên">
+                <label for="partner-name">Tên khách hàng</label>
+                <input type="text" id="partner-name" placeholder="Nhập tên khách hàng">
             </div>
 
             <div class="form-group">
@@ -23,16 +23,16 @@
             </div>
 
             <div class="form-group">
-                <label for="role">Vai trò</label>
-                <select id="role">
-                    <option value="Khai thác phim">Khai thác phim</option>
-                    <option value="Dịch phim">Dịch phim</option>
-                    <option value="Phát hành phim">Phát hành phim</option>
-                    <option value="Quản lý">Quản lý</option>
-                    <option value="Quản lý khách hàng">Quản lý khách hàng</option>
-                </select>
+                <label for="phone">Số điện thoại</label>
+                <input type="text" id="phone" placeholder="Nhập số điện thoại">
             </div>
 
+            <div class="form-group">
+                <label for="address">Địa chỉ</label>
+                <input type="text" id="address" placeholder="Nhập địa chỉ">
+            </div>
+
+            <!-- Thêm trường mật khẩu -->
             <div class="form-group">
                 <label for="password">Mật khẩu</label>
                 <input type="password" id="password" placeholder="Nhập mật khẩu">
@@ -47,13 +47,13 @@
         </div>
 
         <div class="table-container">
-            <table id="employees-table">
+            <table id="partners-table">
                 <thead>
                     <tr>
-                        <th>Tên nhân viên</th>
-                        <th>Vai trò</th>
+                        <th>Tên khách hàng</th>
                         <th>Email</th>
-                        <th>Mật khẩu</th>
+                        <th>Số điện thoại</th>
+                        <th>Địa chỉ</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -65,65 +65,66 @@
 
     <script>
         $(document).ready(function () {
-            let selectedEmployeeId = null; // ID nhân viên được chọn
+            let selectedPartnerId = null; // ID khách hàng được chọn
 
-            // Hàm tải danh sách nhân viên
-            function loadEmployees() {
-                $.get('/api/employees/', function (data) {
-                    const employeesTable = $('#employees-table tbody');
-                    employeesTable.empty();
+            // Hàm tải danh sách khách hàng
+            function loadPartners() {
+                $.get('/api/partners/', function (data) {
+                    const partnersTable = $('#partners-table tbody');
+                    partnersTable.empty();
 
-                    data.forEach(emp => {
-                        employeesTable.append(`
-                            <tr data-id="${emp.employee_id}">
-                                <td>${emp.full_name}</td>
-                                <td>${emp.role}</td>
-                                <td>${emp.email}</td>
-                                <td>******</td>
+                    data.forEach(partner => {
+                        partnersTable.append(`
+                            <tr data-id="${partner.partner_id}">
+                                <td>${partner.full_name}</td>
+                                <td>${partner.email}</td>
+                                <td>${partner.phone}</td>
+                                <td>${partner.address}</td>
                             </tr>
                         `);
                     });
                 });
             }
 
-            // Chọn nhân viên
-            $('#employees-table').on('click', 'tr', function () {
+            // Chọn khách hàng
+            $('#partners-table').on('click', 'tr', function () {
                 const row = $(this);
-                selectedEmployeeId = row.data('id');
+                selectedPartnerId = row.data('id');
                 const cells = row.children('td');
 
-                $('#employee-name').val(cells.eq(0).text());
-                $('#role').val(cells.eq(1).text());
-                $('#email').val(cells.eq(2).text());
-                $('#password').val(''); // Không hiển thị mật khẩu
+                $('#partner-name').val(cells.eq(0).text());
+                $('#email').val(cells.eq(1).text());
+                $('#phone').val(cells.eq(2).text());
+                $('#address').val(cells.eq(3).text());
 
-                $('#employees-table tr').removeClass('selected');
+                $('#partners-table tr').removeClass('selected');
                 row.addClass('selected');
             });
 
-            // Thêm nhân viên
+            // Thêm khách hàng
             $('#add-btn').click(function () {
-                const full_name = $('#employee-name').val();
+                const full_name = $('#partner-name').val();
                 const email = $('#email').val();
-                const role = $('#role').val();
-                const password = $('#password').val();
-            
-                if (!full_name || !email || !role || !password) {
+                const phone = $('#phone').val();
+                const address = $('#address').val();
+                const password = $('#password').val();  // Lấy giá trị mật khẩu
+
+                if (!full_name || !email || !password) {  // Kiểm tra nếu thiếu mật khẩu
                     alert('Vui lòng điền đầy đủ thông tin!');
                     return;
                 }
-            
+
                 const csrftoken = $('meta[name="csrf-token"]').attr('content');
-            
+
                 $.ajax({
-                    url: '/api/employees/add/',
+                    url: '/api/partners/add/',
                     method: 'POST',
                     headers: { 'X-CSRFToken': csrftoken },
-                    data: JSON.stringify({ full_name, email, role, password }),
+                    data: JSON.stringify({ full_name, email, phone, address, password }),  // Thêm mật khẩu vào dữ liệu
                     contentType: 'application/json',
                     success: function (response) {
                         alert(response.message);
-                        loadEmployees();
+                        loadPartners();
                     },
                     error: function (xhr) {
                         alert(`Lỗi: ${xhr.responseJSON.error}`);
@@ -131,54 +132,53 @@
                 });
             });
 
-            // Sửa nhân viên
+            // Sửa khách hàng
             $('#edit-btn').click(function () {
-                if (!selectedEmployeeId) {
-                    alert('Vui lòng chọn một nhân viên để sửa!');
+                if (!selectedPartnerId) {
+                    alert('Vui lòng chọn một khách hàng để sửa!');
                     return;
                 }
 
-                const full_name = $('#employee-name').val();
+                const full_name = $('#partner-name').val();
                 const email = $('#email').val();
-                const role = $('#role').val();
-                const password = $('#password').val();
+                const phone = $('#phone').val();
+                const address = $('#address').val();
+                const password = $('#password').val();  // Nếu có yêu cầu sửa mật khẩu
 
                 $.ajax({
-                    url: `/api/employees/edit/${selectedEmployeeId}/`,
+                    url: `/api/partners/edit/${selectedPartnerId}/`,
                     method: 'PUT',
                     contentType: 'application/json',
-                    data: JSON.stringify({ full_name, email, role, password }),
+                    data: JSON.stringify({ full_name, email, phone, address, password }),  // Thêm mật khẩu vào dữ liệu nếu cần
                     success: function (response) {
                         alert(response.message);
-                        loadEmployees();
+                        loadPartners();
                     },
                     error: function () {
-                        alert('Có lỗi xảy ra khi sửa thông tin nhân viên.');
+                        alert('Có lỗi xảy ra khi sửa thông tin khách hàng.');
                     }
                 });
             });
 
-            // Xóa nhân viên
+            // Xóa khách hàng
             $('#delete-btn').click(function () {
-                if (!selectedEmployeeId) {
-                    alert('Vui lòng chọn một nhân viên để xóa!');
+                if (!selectedPartnerId) {
+                    alert('Vui lòng chọn một khách hàng để xóa!');
                     return;
                 }
-            
+
                 $.ajax({
-                    url: `/api/employees/delete/${selectedEmployeeId}/`,  // URL đúng với ID nhân viên
-                    method: 'DELETE',  // Phương thức DELETE 
+                    url: `/api/partners/delete/${selectedPartnerId}/`,  // URL đúng với ID khách hàng
+                    method: 'DELETE',
                     success: function (response) {
                         alert(response.message);
-                        loadEmployees();  // Tải lại danh sách nhân viên
+                        loadPartners();  // Tải lại danh sách khách hàng
                     },
                     error: function (xhr, status, error) {
-                        alert('Có lỗi xảy ra khi xóa nhân viên: ' + xhr.responseText);
+                        alert('Có lỗi xảy ra khi xóa khách hàng: ' + xhr.responseText);
                     }
                 });
             });
-                    
-            
 
             // Thoát
             $('#exit-btn').click(function () {
@@ -186,7 +186,7 @@
             });
 
             // Tải dữ liệu khi trang được tải
-            loadEmployees();
+            loadPartners();
         });
     </script>
 

@@ -19,6 +19,13 @@
             </div>
 
             <div class="form-group">
+                <label for="employee-name">Nhân viên phát hành</label>
+                <select id="employee-name">
+                    <!-- Nhân viên sẽ được tải từ bảng Employee -->
+                </select>
+            </div>
+
+            <div class="form-group">
                 <label for="release-date">Ngày phát hành</label>
                 <input type="date" id="release-date">
             </div>
@@ -34,9 +41,8 @@
 
             <div class="form-buttons">
                 <button class="add-btn" onclick="addRelease()">Thêm phát hành</button>
-                <button class="delete-btn" onclick="deleteRelease()">Xóa phát hành</button>
-                <button class="edit-btn" onclick="editRelease()">Sửa thông tin</button>
-                <button class="save-btn">Lưu</button>
+                <button class="edit-btn" onclick="editSelectedRelease()">Sửa thông tin</button>
+                <button class="delete-btn" onclick="deleteSelectedReleases()">Xóa phát hành</button>
                 <button class="exit-btn" id="exit-btn">Thoát</button>
             </div>
         </div>
@@ -45,7 +51,9 @@
             <table id="releases-table">
                 <thead>
                     <tr>
+                        <th>Chọn</th>
                         <th>Tên phim</th>
+                        <th>Nhân viên</th>
                         <th>Ngày phát hành</th>
                         <th>Trạng thái</th>
                         <th>Hành động</th>
@@ -59,9 +67,11 @@
     </div>
 
     <script>
-        // Hàm tải danh sách phim từ bảng Movie
+        let selectedReleaseId = null; // Để lưu ID phát hành đang được chọn
+
+        // Tải danh sách phim
         function loadMovies() {
-            $.get('/movies', function(data) {
+            $.get('/api/movies', function(data) {
                 let movieSelect = $('#movie-name');
                 movieSelect.empty();
                 data.forEach(function(movie) {
@@ -70,47 +80,154 @@
             });
         }
 
-        // Hàm thêm phát hành
-        function addRelease() {
-            const movieId = $('#movie-name').val();
-            const releaseDate = $('#release-date').val();
-            const releaseStatus = $('#release-status').val();
-
-            $.post('/releases', { movieId, releaseDate, releaseStatus }, function(response) {
-                alert(response.message);
-                loadReleases();
+        // Tải danh sách nhân viên
+        function loadEmployees() {
+            $.get('/api/employees', function(data) {
+                let employeeSelect = $('#employee-name');
+                employeeSelect.empty();
+                data.forEach(function(employee) {
+                    employeeSelect.append(`<option value="${employee.employee_id}">${employee.full_name}</option>`);
+                });
             });
         }
 
-        // Hàm tải danh sách phát hành
+        // Tải danh sách phát hành
         function loadReleases() {
-            $.get('/releases', function(data) {
+            $.get('/api/releases', function(data) {
                 let releasesTable = $('#releases-table tbody');
                 releasesTable.empty();
                 data.forEach(function(release) {
                     releasesTable.append(`
-                        <tr>
+                        <tr data-release-id="${release.release_id}">
+                            <td><input type="checkbox" class="select-release"></td>
                             <td>${release.movie_title}</td>
+                            <td>${release.employee_name}</td>
                             <td>${release.release_date}</td>
                             <td>${release.status}</td>
                             <td>
-                                <button onclick="editRelease(${release.release_id})">Sửa</button>
-                                <button onclick="deleteRelease(${release.release_id})">Xóa</button>
+                                <button class="edit-btn" onclick="fillEditForm(${release.release_id})">Sửa</button>
                             </td>
                         </tr>
                     `);
                 });
             });
         }
+        
 
-        // Khi trang load, lấy danh sách phim và phát hành
+        // Điền dữ liệu để sửa
+        function fillEditForm(releaseId) {
+            console.log("Selected release ID:", releaseId);  // Kiểm tra giá trị releaseId
+            $.get(`/api/releases/${releaseId}`, function(data) {
+                selectedReleaseId = releaseId;
+                console.log("selectedReleaseId after update:", selectedReleaseId);  // Kiểm tra giá trị sau khi cập nhật
+                $('#movie-name').val(data.movie_id);
+                $('#employee-name').val(data.employee_id);
+                $('#release-date').val(data.release_date);
+                $('#release-status').val(data.status);
+            });
+        }
+        
+        
+
+        // Sửa thông tin phát hành
+        function editSelectedRelease() {
+            console.log("selectedReleaseId in editSelectedRelease:", selectedReleaseId);  // Kiểm tra giá trị của selectedReleaseId
+            if (!selectedReleaseId) {
+                alert('Vui lòng chọn một bản phát hành để sửa!');
+                return;
+            }
+        
+            const updatedData = {
+                movie_id: $('#movie-name').val(),
+                employee_id: $('#employee-name').val(),
+                release_date: $('#release-date').val(),
+                status: $('#release-status').val()
+            };
+        
+            $.ajax({
+                url: `/api/releases/edit/${selectedReleaseId}/`,
+                method: 'PUT',
+                contentType: 'application/json',
+                data: JSON.stringify(updatedData),
+                success: function(response) {
+                    alert(response.message);
+                    loadReleases();
+                    selectedReleaseId = null; // Reset lại ID sau khi sửa
+                },
+                error: function(xhr) {
+                    alert(`Lỗi: ${xhr.responseJSON.error}`);
+                }
+            });
+        }
+        
+
+        // Thêm phát hành mới
+        function addRelease() {
+            const newRelease = {
+                movie_id: $('#movie-name').val(),
+                employee_id: $('#employee-name').val(),
+                release_date: $('#release-date').val(),
+                status: $('#release-status').val()
+            };
+
+            $.ajax({
+                url: '/api/releases/add/',
+                method: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify(newRelease),
+                success: function(response) {
+                    alert(response.message);
+                    loadReleases();
+                },
+                error: function(xhr) {
+                    alert(`Lỗi: ${xhr.responseJSON.error}`);
+                }
+            });
+        }
+
+        // Xóa phát hành được chọn
+        function deleteSelectedReleases() {
+            const selectedIds = [];
+            $('.select-release:checked').each(function() {
+                const releaseId = $(this).closest('tr').data('release-id');
+                selectedIds.push(releaseId);
+            });
+
+            if (selectedIds.length === 0) {
+                alert('Vui lòng chọn ít nhất một bản phát hành để xóa!');
+                return;
+            }
+
+            $.ajax({
+                url: '/api/releases/delete/',
+                method: 'DELETE',
+                contentType: 'application/json',
+                data: JSON.stringify({ release_ids: selectedIds }),
+                success: function(response) {
+                    alert(response.message);
+                    loadReleases();
+                },
+                error: function(xhr) {
+                    alert(`Lỗi: ${xhr.responseJSON.error}`);
+                }
+            });
+        }
+
+        // Khi trang được tải
         $(document).ready(function() {
             loadMovies();
+            loadEmployees();
             loadReleases();
-        });
 
-        $('#exit-btn').click(function () {
-            window.location.href = '/login';  // Điều hướng đến trang đăng nhập
+            $('#releases-table').on('change', '.select-release', function() {
+                const row = $(this).closest('tr');
+                selectedReleaseId = row.data('release-id'); // Lưu ID phát hành
+                console.log("Selected Release ID:", selectedReleaseId);  // Kiểm tra ID đã được lưu
+            });
+
+            $('#exit-btn').click(function() {
+                window.location.href = '/login';
+            });
         });
     </script>
 </body>

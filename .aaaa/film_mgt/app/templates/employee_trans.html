@@ -3,45 +3,47 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Quản lý bản dịch phim</title>
+    <title>Quản lý bản dịch</title>
     <link rel="stylesheet" href="../static/style.css">
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <meta name="csrf-token" content="{{ csrf_token }}">
 </head>
 <body>
     <div class="container">
         <div class="form-container">
-            <h2>Quản lý bản dịch phim</h2>
+            <h2>Quản lý bản dịch</h2>
+
             <div class="form-group">
                 <label for="movie-name">Tên phim</label>
                 <select id="movie-name">
-                    <!-- Tên phim sẽ được tải từ bảng Movie -->
+                    <!-- Danh sách tên phim sẽ được tải từ API -->
                 </select>
             </div>
 
             <div class="form-group">
                 <label for="language">Ngôn ngữ</label>
-                <input type="text" id="language" placeholder="Nhập ngôn ngữ">
+                <input type="text" id="language" placeholder="Nhập ngôn ngữ dịch">
             </div>
 
             <div class="form-group">
-                <label for="translator-name">Tên người dịch</label>
-                <input type="text" id="translator-name" placeholder="Nhập tên người dịch">
+                <label for="translator-name">Nhân viên dịch</label>
+                <select id="translator-name">
+                    <!-- Danh sách nhân viên dịch sẽ được tải từ API -->
+                </select>
             </div>
 
             <div class="form-group">
                 <label for="status">Trạng thái</label>
                 <select id="status">
-                    <option value="Chưa hoàn thành">Chưa hoàn thành</option>
                     <option value="Đang dịch">Đang dịch</option>
                     <option value="Hoàn thành">Hoàn thành</option>
                 </select>
             </div>
 
             <div class="form-buttons">
-                <button class="add-btn" onclick="addTranslation()">Thêm bản dịch</button>
-                <button class="delete-btn" onclick="deleteTranslation()">Xóa bản dịch</button>
-                <button class="edit-btn" onclick="editTranslation()">Sửa thông tin</button>
-                <button class="save-btn">Lưu</button>
+                <button class="add-btn" id="add-btn">Thêm</button>
+                <button class="edit-btn" id="edit-btn">Sửa</button>
+                <button class="delete-btn" id="delete-btn">Xóa</button>
                 <button class="exit-btn" id="exit-btn">Thoát</button>
             </div>
         </div>
@@ -52,74 +54,169 @@
                     <tr>
                         <th>Tên phim</th>
                         <th>Ngôn ngữ</th>
-                        <th>Người dịch</th>
+                        <th>Nhân viên dịch</th>
                         <th>Trạng thái</th>
-                        <th>Hành động</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <!-- Dữ liệu sẽ được thêm vào đây -->
+                    <!-- Dữ liệu sẽ được thêm động tại đây -->
                 </tbody>
             </table>
         </div>
     </div>
 
     <script>
-        // Hàm tải danh sách phim từ bảng Movie
-        function loadMovies() {
-            $.get('/api/movies', function(data) {
-                const movieSelect = $('#movie-select');
-                movieSelect.empty();
-                movieSelect.append('<option value="" disabled selected>Chọn một bộ phim</option>');
-                data.forEach(movie => {
-                    movieSelect.append(`<option value="${movie.movie_id}">${movie.title}</option>`);
+        $(document).ready(function () {
+            let selectedTranslationId = null;
+
+            // Hàm tải danh sách phim
+            function loadMovies() {
+                $.get('/api/movies/', function (data) {
+                    const movieSelect = $('#movie-name');
+                    movieSelect.empty();
+                    data.forEach(movie => {
+                        movieSelect.append(`<option value="${movie.movie_id}">${movie.title}</option>`);
+                    });
+                });
+            }
+
+            // Hàm tải danh sách nhân viên dịch
+            function loadTranslators() {
+                $.get('/api/employees/?role=translator', function (data) {
+                    const translatorSelect = $('#translator-name');
+                    translatorSelect.empty();
+                    data.forEach(translator => {
+                        translatorSelect.append(`<option value="${translator.employee_id}">${translator.full_name}</option>`);
+                    });
+                });
+            }
+
+            // Hàm tải danh sách bản dịch
+            function loadTranslations() {
+                $.get('/api/translations/', function (data) {
+                    const translationsTable = $('#translations-table tbody');
+                    translationsTable.empty();
+                    data.forEach(translation => {
+                        translationsTable.append(`
+                            <tr data-id="${translation.translation_id}">
+                                <td>${translation.movie_title}</td>
+                                <td>${translation.language}</td>
+                                <td>${translation.translator_name}</td>
+                                <td>${translation.status}</td>
+                            </tr>
+                        `);
+                    });
+                });
+            }
+
+            // Chọn bản dịch để sửa hoặc xóa
+            $('#translations-table').on('click', 'tr', function () {
+                const row = $(this);
+                selectedTranslationId = row.data('id');
+                const cells = row.children('td');
+
+                $('#movie-name').val(cells.eq(0).text());
+                $('#language').val(cells.eq(1).text());
+                $('#translator-name').val(cells.eq(2).text());
+                $('#status').val(cells.eq(3).text());
+
+                $('#translations-table tr').removeClass('selected');
+                row.addClass('selected');
+            });
+
+            // Thêm bản dịch
+            $('#add-btn').click(function () {
+                const movieId = $('#movie-name').val();
+                const language = $('#language').val();
+                const translatorId = $('#translator-name').val(); // Đúng tên biến
+                const status = $('#status').val();
+            
+                if (!movieId || !language || !translatorId || !status) {
+                    alert('Vui lòng điền đầy đủ thông tin!');
+                    return;
+                }
+            
+                const csrftoken = $('meta[name="csrf-token"]').attr('content');
+            
+                $.ajax({
+                    url: '/api/translations/add/',
+                    method: 'POST',
+                    headers: { 'X-CSRFToken': csrftoken },
+                    data: JSON.stringify({ movie_id: movieId, language, translator_id: translatorId, status }), // Thống nhất khóa
+                    contentType: 'application/json',
+                    success: function (response) {
+                        alert(response.message);
+                        loadTranslations();
+                    },
+                    error: function (xhr) {
+                        alert(`Lỗi: ${xhr.responseJSON.error}`);
+                    }
                 });
             });
-        }
 
-        // Hàm thêm bản dịch
-        function addTranslation() {
-            const movieId = $('#movie-name').val();
-            const language = $('#language').val();
-            const translatorName = $('#translator-name').val();
-            const status = $('#status').val();
+            // Sửa bản dịch
+            $('#edit-btn').click(function () {
+                if (!selectedTranslationId) {
+                    alert('Vui lòng chọn một bản dịch để sửa!');
+                    return;
+                }
 
-            $.post('/translations', { movieId, language, translatorName, status }, function(response) {
-                alert(response.message);
-                loadTranslations();
-            });
-        }
+                const movieId = $('#movie-name').val();
+                const language = $('#language').val();
+                const translatorId = $('#translator-name').val();
+                const status = $('#status').val();
 
-        // Hàm tải danh sách bản dịch
-        function loadTranslations() {
-            $.get('/translations', function(data) {
-                let translationsTable = $('#translations-table tbody');
-                translationsTable.empty();
-                data.forEach(function(translation) {
-                    translationsTable.append(`
-                        <tr>
-                            <td>${translation.movie_title}</td>
-                            <td>${translation.language}</td>
-                            <td>${translation.translator_name}</td>
-                            <td>${translation.status}</td>
-                            <td>
-                                <button onclick="editTranslation(${translation.translation_id})">Sửa</button>
-                                <button onclick="deleteTranslation(${translation.translation_id})">Xóa</button>
-                            </td>
-                        </tr>
-                    `);
+                $.ajax({
+                    url: `/api/translations/edit/${selectedTranslationId}/`,
+                    method: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ movie_id: movieId, language, translated_by: translatorId, status }),
+                    success: function (response) {
+                        alert(response.message);
+                        loadTranslations();
+                    },
+                    error: function () {
+                        alert('Có lỗi xảy ra khi sửa bản dịch.');
+                    }
                 });
             });
-        }
-        
-        // Khi trang load, lấy danh sách phim và bản dịch
-        $(document).ready(function() {
+
+            // Xóa bản dịch
+            $('#delete-btn').click(function () {
+                if (!selectedTranslationId) {
+                    alert('Vui lòng chọn một bản dịch để xóa!');
+                    return;
+                }
+
+                $.ajax({
+                    url: `/api/translations/delete/${selectedTranslationId}/`,
+                    method: 'DELETE',
+                    success: function (response) {
+                        alert(response.message);
+                        loadTranslations();
+                    },
+                    error: function (xhr, status, error) {
+                        alert('Có lỗi xảy ra khi xóa bản dịch: ' + xhr.responseText);
+                    }
+                });
+            });
+
+            // Thoát
+            $('#exit-btn').click(function () {
+                window.location.href = '/login';
+            });
+
+            // Tải dữ liệu khi trang được tải
             loadMovies();
+            loadTranslators();
             loadTranslations();
         });
-        $('#exit-btn').click(function () {
-            window.location.href = '/login';  // Điều hướng đến trang đăng nhập
-        });
     </script>
+
+    <style>
+        .selected {
+            background-color: #f0f8ff;
+        }
+    </style>
 </body>
 </html>

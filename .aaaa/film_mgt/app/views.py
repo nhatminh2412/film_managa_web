@@ -3,8 +3,9 @@ from django.template import loader
 from django.shortcuts import render
 from .models import Employee
 from django.http import JsonResponse, HttpResponseNotAllowed
-from .models import Movie, Partner
+from .models import Movie, Partner,Translation,Release,Order
 import json
+from datetime import datetime
 
 def authorize(request):
     acc = None
@@ -30,6 +31,8 @@ def authorize(request):
             template_name = 'employee_management.html'
         case 'Khách hàng':
             template_name = 'partners.html'
+        case 'Quản lý khách hàng':
+            template_name = 'manager_partner.html'
         case _:
             template_name = 'default.html'
     template = loader.get_template(template_name)
@@ -172,6 +175,384 @@ def edit_movie(request, movie_id):
         except json.JSONDecodeError:
             return JsonResponse({'error': 'Dữ liệu không hợp lệ!'}, status=400)
 
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+
+def get_translations(request):
+    translations = Translation.objects.select_related('movie', 'translated_by').all()
+    data = [
+        {
+            "translation_id": t.translation_id,
+            "movie_title": t.movie.title,
+            "language": t.language,
+            "translator_name": t.translated_by.full_name,
+            "status": t.status,
+        }
+        for t in translations
+    ]
+    return JsonResponse(data, safe=False)
+
+
+def add_translation(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            movie = Movie.objects.get(pk=data['movie_id'])
+            translator = Employee.objects.get(pk=data['translator_id'])
+
+            new_translation = Translation.objects.create(
+                movie=movie,
+                language=data['language'],
+                translated_by=translator,
+                status=data['status'],
+            )
+            return JsonResponse({'message': 'Bản dịch đã được thêm thành công!', 'translation_id': new_translation.translation_id})
+
+        except Movie.DoesNotExist:
+            return JsonResponse({'error': 'Phim không tồn tại!'}, status=404)
+        except Employee.DoesNotExist:
+            return JsonResponse({'error': 'Người dịch không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+def delete_translation(request, translation_id):
+    if request.method == 'DELETE':
+        try:
+            translation = Translation.objects.get(pk=translation_id)
+            translation.delete()
+            return JsonResponse({'message': 'Bản dịch đã được xóa thành công!'})
+
+        except Translation.DoesNotExist:
+            return JsonResponse({'error': 'Bản dịch không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+def edit_translation(request, translation_id):
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            translation = Translation.objects.get(pk=translation_id)
+
+            if 'movie_id' in data:
+                translation.movie = Movie.objects.get(pk=data['movie_id'])
+            if 'language' in data:
+                translation.language = data['language']
+            if 'translator_id' in data:
+                translation.translated_by = Employee.objects.get(pk=data['translator_id'])
+            if 'status' in data:
+                translation.status = data['status']
+
+            translation.save()
+            return JsonResponse({'message': 'Thông tin bản dịch đã được cập nhật thành công!'})
+
+        except Translation.DoesNotExist:
+            return JsonResponse({'error': 'Bản dịch không tồn tại!'}, status=404)
+        except Movie.DoesNotExist:
+            return JsonResponse({'error': 'Phim không tồn tại!'}, status=404)
+        except Employee.DoesNotExist:
+            return JsonResponse({'error': 'Người dịch không tồn tại!'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Dữ liệu không hợp lệ!'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+
+def get_releases(request):
+    releases = Release.objects.select_related('movie', 'employee').all()
+    data = [
+        {
+            "release_id": r.release_id,
+            "movie_title": r.movie.title,
+            "release_date": r.release_date,
+            "status": r.status,
+            "employee_name": r.employee.full_name,
+        }
+        for r in releases
+    ]
+    return JsonResponse(data, safe=False)
+
+
+
+def add_release(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            movie = Movie.objects.get(pk=data['movie_id'])
+            employee = Employee.objects.get(pk=data['employee_id'])
+
+            new_release = Release.objects.create(
+                movie=movie,
+                release_date=data['release_date'],
+                status=data['status'],
+                employee=employee,
+            )
+            return JsonResponse({'message': 'Phát hành đã được thêm thành công!', 'release_id': new_release.release_id})
+
+        except Movie.DoesNotExist:
+            return JsonResponse({'error': 'Phim không tồn tại!'}, status=404)
+        except Employee.DoesNotExist:
+            return JsonResponse({'error': 'Nhân viên không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+
+def delete_release(request):
+    if request.method == 'DELETE':
+        try:
+            data = json.loads(request.body)
+            release_ids = data.get('release_ids', [])
+            releases = Release.objects.filter(release_id__in=release_ids)
+
+            if releases.exists():
+                releases.delete()
+                return JsonResponse({'message': 'Các bản phát hành đã được xóa thành công!'})
+            else:
+                return JsonResponse({'error': 'Không có bản phát hành nào để xóa!'}, status=404)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+
+def edit_release(request, release_id):
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            release = Release.objects.get(pk=release_id)
+
+            if 'movie_id' in data:
+                release.movie = Movie.objects.get(pk=data['movie_id'])
+            if 'release_date' in data:
+                release.release_date = data['release_date']
+            if 'status' in data:
+                release.status = data['status']
+            if 'employee_id' in data:
+                release.employee = Employee.objects.get(pk=data['employee_id'])
+
+            release.save()
+            return JsonResponse({'message': 'Thông tin phát hành đã được cập nhật thành công!'})
+
+        except Release.DoesNotExist:
+            return JsonResponse({'error': 'Phát hành không tồn tại!'}, status=404)
+        except Movie.DoesNotExist:
+            return JsonResponse({'error': 'Phim không tồn tại!'}, status=404)
+        except Employee.DoesNotExist:
+            return JsonResponse({'error': 'Nhân viên không tồn tại!'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Dữ liệu không hợp lệ!'}, status=400)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+
+def get_partners(request):
+    try:
+        partners = Partner.objects.all()
+        data = [
+            {
+                "partner_id": partner.partner_id,
+                "full_name": partner.full_name,
+                "email": partner.email,
+                "phone": partner.phone,
+                "address": partner.address,
+                "role": partner.role,
+            }
+            for partner in partners
+        ]
+        return JsonResponse(data, safe=False)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+def add_partner(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            full_name = data['full_name']
+            email = data['email']
+            password = data['password']
+            phone = data.get('phone', '')
+            address = data.get('address', '')
+            
+            new_partner = Partner.objects.create(
+                full_name=full_name,
+                email=email,
+                password=password,
+                phone=phone,
+                address=address,
+                role='Khách hàng'
+            )
+            
+            return JsonResponse({'message': 'Khách hàng đã được thêm thành công!', 'partner_id': new_partner.partner_id})
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+def edit_partner(request, partner_id):
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            partner = Partner.objects.get(partner_id=partner_id)
+            
+            partner.full_name = data.get('full_name', partner.full_name)
+            partner.email = data.get('email', partner.email)
+            partner.password = data.get('password', partner.password)
+            partner.phone = data.get('phone', partner.phone)
+            partner.address = data.get('address', partner.address)
+            partner.save()
+
+            return JsonResponse({'message': 'Thông tin khách hàng đã được cập nhật thành công!'})
+        
+        except Partner.DoesNotExist:
+            return JsonResponse({'error': 'Khách hàng không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+def delete_partner(request, partner_id):
+    if request.method == 'DELETE':
+        try:
+            partner = Partner.objects.get(partner_id=partner_id)
+            partner.delete()
+            return JsonResponse({'message': 'Khách hàng đã được xóa thành công!'})
+        
+        except Partner.DoesNotExist:
+            return JsonResponse({'error': 'Khách hàng không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+def get_partner(request, partner_id):
+    try:
+        partner = Partner.objects.get(pk=partner_id)  # Sửa ở đây
+        return JsonResponse({'full_name': partner.full_name})
+    except Partner.DoesNotExist:
+        return JsonResponse({'error': 'Partner not found'}, status=404)
+    
+def get_orders(request):
+    try:
+        partner_id = request.GET.get('partnerId')
+        if partner_id:
+            orders = Order.objects.filter(partner__partner_id=partner_id).select_related('movie').all()
+            data = [
+                {
+                    "order_id": order.order_id,
+                    "movie_title": order.movie.title,
+                    "order_date": order.order_date,
+                }
+                for order in orders
+            ]
+            return JsonResponse(data, safe=False)
+        else:
+            return JsonResponse({'error': 'partnerId is required'}, status=400)
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
+
+
+
+
+def add_order(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)  # Đọc dữ liệu JSON từ body
+            partner_id = data.get('partner_id')
+            movie_id = data.get('movie_id')
+            order_date = data.get('order_date')
+
+            # Chuyển đổi order_date từ chuỗi thành datetime
+            order_date = datetime.strptime(order_date, '%Y-%m-%dT%H:%M')
+
+            if not partner_id or not movie_id or not order_date:
+                return JsonResponse({'error': 'Thiếu thông tin để tạo đơn đặt phim'}, status=400)
+
+            partner = Partner.objects.get(pk=partner_id)
+            movie = Movie.objects.get(pk=movie_id)
+
+            new_order = Order.objects.create(
+                partner=partner,
+                movie=movie,
+                order_date=order_date
+            )
+
+            return JsonResponse({
+                'message': 'Đơn đặt phim đã được thêm thành công!',
+                'order_id': new_order.order_id,
+                'order_date': new_order.order_date.strftime('%Y-%m-%d %H:%M:%S')
+            })
+
+        except Partner.DoesNotExist:
+            return JsonResponse({'error': 'Khách hàng không tồn tại!'}, status=404)
+        except Movie.DoesNotExist:
+            return JsonResponse({'error': 'Phim không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+
+
+def delete_order(request, order_id):
+    if request.method == 'DELETE':
+        try:
+            order = Order.objects.get(order_id=order_id)
+            order.delete()
+            return JsonResponse({'message': 'Đơn đặt phim đã được xóa thành công!'})
+        except Order.DoesNotExist:
+            return JsonResponse({'error': 'Đơn đặt phim không tồn tại!'}, status=404)
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+def edit_order(request, order_id):
+    if request.method == 'PUT':
+        try:
+            data = json.loads(request.body)
+            order = Order.objects.get(order_id=order_id)
+
+            # Cập nhật thông tin đơn đặt phim
+            if 'movie_id' in data:
+                movie = Movie.objects.get(pk=data['movie_id'])
+                order.movie = movie
+            order.save()
+            
+            return JsonResponse({'message': 'Thông tin đơn đặt phim đã được cập nhật thành công!'})
+
+        except Order.DoesNotExist:
+            return JsonResponse({'error': 'Đơn đặt phim không tồn tại!'}, status=404)
+        except Movie.DoesNotExist:
+            return JsonResponse({'error': 'Phim không tồn tại!'}, status=404)
+        except json.JSONDecodeError:
+            return JsonResponse({'error': 'Dữ liệu không hợp lệ!'}, status=400)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=500)
 

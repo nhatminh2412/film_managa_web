@@ -15,7 +15,8 @@
         
         <div class="form-group">
             <label for="partner-name">Tên khách hàng</label>
-            <input type="text" id="partner-name" disabled>
+            <!-- Thay đổi thành readonly để không cho phép sửa -->
+            <input type="text" id="partner-name" readonly>
         </div>
 
         <div class="form-group">
@@ -26,10 +27,15 @@
             </select>
         </div>
 
+        <div class="form-group">
+            <label for="order_date">Ngày đặt</label>
+            <input type="datetime-local" id="order_date" name="order_date" required>
+        </div>
+
         <div class="form-buttons">
-            <button class="add-btn" onclick="addOrder()">Đặt Phim</button>
-            <button class="edit-btn" onclick="editOrder()">Sửa Đơn</button>
-            <button class="delete-btn" onclick="deleteOrder()">Xóa Đơn</button>
+            <button class="add-btn" id="add-order-btn">Đặt Phim</button>
+            <button class="edit-btn" id="edit-order-btn">Sửa Đơn</button>
+            <button class="delete-btn" id="delete-order-btn">Xóa Đơn</button>
             <button class="exit-btn" id="exit-btn">Thoát</button>
         </div>
     </div>
@@ -53,11 +59,12 @@
 <script>
     $(document).ready(function() {
         const partnerId = 123; // Giả sử partnerId được lấy từ session hoặc backend.
+        let selectedOrderId = null; // Biến lưu trữ ID của đơn đặt phim đã chọn
 
         // Hàm tải thông tin Partner (Khách hàng) đã đăng nhập
         function loadPartner() {
             $.get(`/api/partners/${partnerId}`, function(data) {
-                $('#partner-name').val(data.full_name);
+                $('#partner-name').val(data.full_name);  // Hiển thị tên khách hàng đã đăng nhập
             });
         }
 
@@ -79,12 +86,14 @@
                 const ordersTableBody = $('#orders-table-body');
                 ordersTableBody.empty();
                 data.forEach(order => {
-                    ordersTableBody.append(`
-                        <tr>
-                            <td>${order.movie_title}</td>
-                            <td>${order.order_date}</td>
-                        </tr>
-                    `);
+                    const row = $(`<tr data-order-id="${order.order_id}">
+                                        <td>${order.movie_title}</td>
+                                        <td>${order.order_date}</td>
+                                    </tr>`);
+                    row.click(function() {
+                        selectOrderForEdit(order.order_id, order.movie_id);
+                    });
+                    ordersTableBody.append(row);
                 });
             });
         }
@@ -92,37 +101,104 @@
         // Hàm thêm đơn đặt phim
         function addOrder() {
             const movieId = $('#movie-select').val();
-
-            if (movieId) {
-                $.post('/api/orders', { partnerId, movieId }, function(response) {
-                    alert(response.message);
-                    loadOrders(); // Cập nhật danh sách đơn đặt
+            const orderDate = $('#order_date').val();  // Lấy giá trị ngày đặt phim
+            if (movieId && orderDate) {
+                $.ajax({
+                    url: '/api/orders/add/',  // Đảm bảo URL này đúng
+                    method: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({
+                        partner_id: partnerId, 
+                        movie_id: movieId,
+                        order_date: orderDate  // Truyền order_date vào body request
+                    }),
+                    success: function(response) {
+                        alert(response.message);
+                        loadOrders();  // Tải lại danh sách đơn đặt phim
+                    },
+                    error: function(error) {
+                        alert('Lỗi khi thêm đơn đặt phim.');
+                    }
                 });
             } else {
-                alert('Vui lòng chọn một bộ phim.');
+                alert('Vui lòng chọn một bộ phim và nhập ngày đặt.');
             }
         }
 
-        // Sửa thông tin đơn đặt phim
+
+        // Hàm chọn đơn đặt phim để sửa
+        function selectOrderForEdit(orderId, movieId) {
+            selectedOrderId = orderId;
+            $('#movie-select').val(movieId); // Chọn phim trong dropdown (sử dụng movieId)
+        }
+
+        // Hàm sửa đơn đặt phim
         function editOrder() {
-            alert('Chức năng sửa đơn đặt phim đang được phát triển!');
-            // Xử lý sửa đơn đặt phim tại đây.
+            const movieId = $('#movie-select').val();
+            if (selectedOrderId && movieId) {
+                $.ajax({
+                    url: `/api/orders/edit/${selectedOrderId}/`,
+                    type: 'PUT',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ movieId: movieId }),
+                    success: function(response) {
+                        alert(response.message);
+                        loadOrders(); // Cập nhật danh sách đơn đặt
+                        selectedOrderId = null; // Reset selected order
+                    },
+                    error: function(error) {
+                        alert('Lỗi sửa đơn đặt phim.');
+                    }
+                });
+            } else {
+                alert('Vui lòng chọn một bộ phim để sửa.');
+            }
         }
 
         // Xóa đơn đặt phim
         function deleteOrder() {
-            alert('Chức năng xóa đơn đặt phim đang được phát triển!');
-            // Xử lý xóa đơn đặt phim tại đây.
+            if (selectedOrderId) {
+                $.ajax({
+                    url: `/api/orders/delete/${selectedOrderId}/`,
+                    type: 'DELETE',
+                    success: function(response) {
+                        alert(response.message);
+                        loadOrders(); // Cập nhật danh sách đơn đặt
+                        selectedOrderId = null; // Reset selected order
+                    },
+                    error: function(error) {
+                        alert('Lỗi xóa đơn đặt phim.');
+                    }
+                });
+            } else {
+                alert('Vui lòng chọn một đơn đặt phim để xóa.');
+            }
         }
 
         // Khi trang load, tải dữ liệu ban đầu
         loadPartner();  // Tải thông tin partner
         loadMovies();   // Tải danh sách phim
         loadOrders();   // Tải danh sách đơn đặt
-    });
 
-    $('#exit-btn').click(function () {
-        window.location.href = '/login';  // Điều hướng đến trang đăng nhập
+        // Gán sự kiện cho nút "Đặt Phim"
+        $('#add-order-btn').click(function() {
+            addOrder(); // Gọi hàm addOrder khi nút được nhấn
+        });
+
+        // Gán sự kiện cho nút "Sửa Đơn"
+        $('#edit-order-btn').click(function() {
+            editOrder(); // Gọi hàm editOrder khi nút được nhấn
+        });
+
+        // Gán sự kiện cho nút "Xóa Đơn"
+        $('#delete-order-btn').click(function() {
+            deleteOrder(); // Gọi hàm deleteOrder khi nút được nhấn
+        });
+
+        // Điều hướng đến trang đăng nhập khi nhấn nút "Thoát"
+        $('#exit-btn').click(function () {
+            window.location.href = '/login';  // Điều hướng đến trang đăng nhập
+        });
     });
 </script>
 

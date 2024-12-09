@@ -12,6 +12,7 @@ class Employee(models.Model):
             ('Dịch phim', 'Dịch phim'), 
             ('Phát hành phim', 'Phát hành phim'),
             ('Quản lý', 'Quản lý'),
+             ('Quản lý khách hàng', 'Quản lý khách hàng')
         ],
     ) 
 
@@ -64,6 +65,6 @@ class Order(models.Model):
     order_id = models.AutoField(primary_key=True)  
     partner = models.ForeignKey(Partner, on_delete=models.CASCADE)
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
-    order_date = models.DateTimeField(auto_now_add=True)
+    order_date = models.DateTimeField()
     
   
