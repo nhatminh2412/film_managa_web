@@ -1,14 +1,20 @@
-import app.controller as controller
 from django.http import HttpResponse
 from django.template import loader
 from django.shortcuts import render
 from .models import Employee
 from django.http import JsonResponse, HttpResponseNotAllowed
-from .models import Movie
+from .models import Movie, Partner
 import json
 
 def authorize(request):
-    acc = controller.authorize(request.GET.get('email', ''), request.GET.get('password', ''))
+    acc = None
+    try:    
+        acc = Employee.objects.get(email=request.GET.get('email', ''), password=request.GET.get('password', ''))    
+    except Employee.DoesNotExist:
+        try:
+            acc = Partner.objects.get(email=request.GET.get('email', ''), password=request.GET.get('password', ''))
+        except Partner.DoesNotExist:
+            acc = None
     if not acc:
         return HttpResponse("không có tài khoản")
     
@@ -26,7 +32,6 @@ def authorize(request):
             template_name = 'partners.html'
         case _:
             template_name = 'default.html'
-    print(template_name)
     template = loader.get_template(template_name)
     return HttpResponse(template.render({'user': acc}))
     
