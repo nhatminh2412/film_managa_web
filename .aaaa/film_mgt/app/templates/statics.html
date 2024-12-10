@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thống kê Đơn Hàng</title>
+    <link rel="stylesheet" href="../static/style.css"> 
+</head>
+<body>
+
+<div class="container">
+    <h2>Thống kê các bộ phim đã đặt</h2>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Tên bộ phim</th>
+                <th>Tên khách hàng</th>
+                <th>Giá</th>
+                <th>Ngày đặt</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for order in orders %}
+            <tr>
+                <td>{{ order.movie.title }}</td>
+                <td>{{ order.partner.full_name }}</td>
+                <td>{{ order.movie_price }}</td>
+                <td>{{ order.order_date }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Tổng doanh thu: {{ total_revenue }}</h3>
+</div>
+
+</body>
+</html>

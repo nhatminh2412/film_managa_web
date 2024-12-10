@@ -11,7 +11,7 @@
 
 <div class="container">
     <div class="form-container">
-        <h2>Quản lý đơn đặt phim</h2>
+        <h2>Đặt phim</h2>
         
         <div class="form-group">
             <label for="partner-name">Tên khách hàng</label>
@@ -25,6 +25,12 @@
                 <option value="" disabled selected>Chọn một bộ phim</option>
                 <!-- Danh sách phim sẽ được tải động từ API -->
             </select>
+        </div>
+
+        <!-- Thêm một khung để hiển thị giá tiền phim -->
+        <div class="form-group" id="movie-price-container" style="display:none;">
+            <label for="movie-price">Giá phim</label>
+            <input type="text" id="movie-price" readonly>
         </div>
 
         <div class="form-group">
@@ -47,6 +53,7 @@
                 <tr>
                     <th>Tên phim</th>
                     <th>Ngày đặt</th>
+                    <th>Giá tiền</th>
                 </tr>
             </thead>
             <tbody id="orders-table-body">
@@ -64,7 +71,11 @@
         // Hàm tải thông tin Partner (Khách hàng) đã đăng nhập
         function loadPartner() {
             $.get(`/api/partners/${partnerId}`, function(data) {
-                $('#partner-name').val(data.full_name);  // Hiển thị tên khách hàng đã đăng nhập
+                if (data && data.full_name) {
+                    $('#partner-name').val(data.full_name);  // Gán giá trị đúng cho partner-name
+                } else {
+                    console.log("Không có dữ liệu cho partner hoặc partner không tồn tại");
+                }
             });
         }
 
@@ -75,7 +86,7 @@
                 movieSelect.empty();
                 movieSelect.append('<option value="" disabled selected>Chọn một bộ phim</option>');
                 data.forEach(movie => {
-                    movieSelect.append(`<option value="${movie.movie_id}">${movie.title}</option>`);
+                    movieSelect.append(`<option value="${movie.movie_id}" data-price="${movie.price}">${movie.title}</option>`);
                 });
             });
         }
@@ -89,6 +100,7 @@
                     const row = $(`<tr data-order-id="${order.order_id}">
                                         <td>${order.movie_title}</td>
                                         <td>${order.order_date}</td>
+                                        <td>${order.movie_price} VND</td>
                                     </tr>`);
                     row.click(function() {
                         selectOrderForEdit(order.order_id, order.movie_id);
@@ -98,19 +110,34 @@
             });
         }
 
+        // Hàm cập nhật giá tiền khi chọn phim
+        $('#movie-select').change(function() {
+            const selectedOption = $('#movie-select option:selected');
+            const price = selectedOption.data('price');
+            if (price) {
+                $('#movie-price').val(price + ' VND');  // Hiển thị giá tiền
+                $('#movie-price-container').show();   // Hiển thị khung giá tiền
+            }
+        });
+
         // Hàm thêm đơn đặt phim
         function addOrder() {
             const movieId = $('#movie-select').val();
-            const orderDate = $('#order_date').val();  // Lấy giá trị ngày đặt phim
+            const orderDate = $('#order_date').val();
+            const partnerName = $('#partner-name').val();
+            console.log("Movie ID: ", movieId);
+            console.log("Order Date: ", orderDate);
+            console.log("Partner Name: ", partnerName);
+
             if (movieId && orderDate) {
                 $.ajax({
                     url: '/api/orders/add/',  // Đảm bảo URL này đúng
                     method: 'POST',
                     contentType: 'application/json',
                     data: JSON.stringify({
-                        partner_id: partnerId, 
-                        movie_id: movieId,
-                        order_date: orderDate  // Truyền order_date vào body request
+                        movie_id: movieId,   // Không cần truyền partner_id vì backend sẽ lấy từ session
+                        order_date: orderDate,
+                        partner_name: partnerName
                     }),
                     success: function(response) {
                         alert(response.message);
@@ -124,7 +151,6 @@
                 alert('Vui lòng chọn một bộ phim và nhập ngày đặt.');
             }
         }
-
 
         // Hàm chọn đơn đặt phim để sửa
         function selectOrderForEdit(orderId, movieId) {

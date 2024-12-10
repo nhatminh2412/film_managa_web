@@ -5,6 +5,8 @@ urlpatterns = [
     path('', views.login),
     path('authorize', views.authorize),
     path('login/', views.login_view, name='login'),
+    path('partners/', views.parteners_view, name='partners'),
+    path('statics/', views.statics_view, name='statics'),
     path('api/employees/', views.get_employee, name='get_employees'),
     path('api/employees/add/', views.add_employee, name='add_employee'),
     path('api/employees/edit/<int:employee_id>/', views.edit_employee, name='edit_employee'),
@@ -30,4 +32,5 @@ urlpatterns = [
     path('api/orders/add/', views.add_order, name='add_order'),
     path('api/orders/delete/<int:order_id>/', views.delete_order, name='delete_order'),
     path('api/orders/edit/<int:order_id>/', views.edit_order, name='edit_order'),
+    
 ]

@@ -32,6 +32,11 @@
                 <textarea id="description" rows="4" placeholder="Nhập mô tả về phim"></textarea>
             </div>
 
+            <div class="form-group">
+                <label for="price">Giá tiền</label>
+                <input type="number" id="price" placeholder="Nhập giá tiền (VNĐ)" step="0.01">
+            </div>
+
             <div class="form-buttons">
                 <button class="add-btn" id="add-btn">Thêm</button>
                 <button class="edit-btn" id="edit-btn">Sửa</button>
@@ -48,6 +53,7 @@
                         <th>Năm phát hành</th>
                         <th>Thể loại</th>
                         <th>Mô tả</th>
+                        <th>Giá tiền</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -74,6 +80,7 @@
                                 <td>${movie.release_year}</td>
                                 <td>${movie.genre}</td>
                                 <td>${movie.description}</td>
+                                <td>${movie.price}</td> 
                             </tr>
                         `);
                     });
@@ -99,6 +106,7 @@
                 $('#release-year').val(cells.eq(1).text());
                 $('#genre').val(cells.eq(2).text());
                 $('#description').val(cells.eq(3).text());
+                $('#price').val(cells.eq(4).text());
                 
                 // Đánh dấu dòng đã chọn
                 $('#movies-table tr').removeClass('selected');
@@ -114,6 +122,7 @@
                 const releaseYear = $('#release-year').val();
                 const genre = $('#genre').val();
                 const description = $('#description').val();
+                const price = $('#price').val();
 
                 if (!title || !releaseYear || !genre || !description) {
                     alert('Vui lòng điền đầy đủ thông tin!');
@@ -149,22 +158,22 @@
                 const releaseYear = $('#release-year').val();
                 const genre = $('#genre').val();
                 const description = $('#description').val();
+                const price = $('#price').val();  // Lấy giá trị price từ input
             
                 $.ajax({
-                    url: `/api/movies/edit/${selectedMovieId}/`,  // Sử dụng selectedMovieId
+                    url: `/api/movies/edit/${selectedMovieId}/`,
                     method: 'PUT',
                     contentType: 'application/json',
-                    data: JSON.stringify({ title, release_year: releaseYear, genre, description }),
+                    data: JSON.stringify({ title, release_year: releaseYear, genre, description, price }),  // Bao gồm price
                     success: function (response) {
                         alert(response.message);
-                        loadMovies();
+                        loadMovies();  // Tải lại danh sách phim sau khi sửa
                     },
                     error: function () {
                         alert('Có lỗi xảy ra khi sửa thông tin phim.');
                     }
                 });
             });
-            
 
             // Xóa phim
             $('#delete-btn').click(function () {

@@ -36,7 +36,8 @@ class Movie(models.Model):
     release_year = models.IntegerField()
     genre = models.CharField(max_length=100, blank=True, null=True)
     description = models.TextField(blank=True, null=True)
-    
+    price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)
+
 class Release(models.Model):
     release_id = models.AutoField(primary_key=True)  
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
@@ -62,9 +63,16 @@ class Translation(models.Model):
     )
 
 class Order(models.Model):
-    order_id = models.AutoField(primary_key=True)  
+    order_id = models.AutoField(primary_key=True)
     partner = models.ForeignKey(Partner, on_delete=models.CASCADE)
     movie = models.ForeignKey(Movie, on_delete=models.CASCADE)
     order_date = models.DateTimeField()
+    movie_price = models.DecimalField(max_digits=10, decimal_places=2, default=0.0)  # Giá trị mặc định tạm thời
+
+    def save(self, *args, **kwargs):
+        # Chỉ gán giá trị nếu movie_price chưa có giá trị
+        if not self.movie_price:
+            self.movie_price = self.movie.price  # Gán giá trị movie_price từ giá trị của movie.price
+        super(Order, self).save(*args, **kwargs)
     
   

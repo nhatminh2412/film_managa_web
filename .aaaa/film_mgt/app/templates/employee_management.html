@@ -43,6 +43,7 @@
                 <button class="edit-btn" id="edit-btn">Sửa</button>
                 <button class="delete-btn" id="delete-btn">Xóa</button>
                 <button class="exit-btn" id="exit-btn">Thoát</button>
+                <button class="stats-btn" id="stats-btn">Thống kê</button> <!-- Nút Thống kê mới -->
             </div>
         </div>
 
@@ -166,23 +167,26 @@
                 }
             
                 $.ajax({
-                    url: `/api/employees/delete/${selectedEmployeeId}/`,  // URL đúng với ID nhân viên
-                    method: 'DELETE',  // Phương thức DELETE 
+                    url: `/api/employees/delete/${selectedEmployeeId}/`,
+                    method: 'DELETE',
                     success: function (response) {
                         alert(response.message);
-                        loadEmployees();  // Tải lại danh sách nhân viên
+                        loadEmployees();
                     },
-                    error: function (xhr, status, error) {
+                    error: function (xhr) {
                         alert('Có lỗi xảy ra khi xóa nhân viên: ' + xhr.responseText);
                     }
                 });
             });
-                    
-            
 
             // Thoát
             $('#exit-btn').click(function () {
                 window.location.href = '/login';
+            });
+
+            // Thống kê
+            $('#stats-btn').click(function () {
+                window.location.href = '/statics'; // Điều hướng đến form thống kê
             });
 
             // Tải dữ liệu khi trang được tải

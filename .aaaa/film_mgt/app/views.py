@@ -30,7 +30,7 @@ def authorize(request):
         case 'Quản lý':
             template_name = 'employee_management.html'
         case 'Khách hàng':
-            template_name = 'partners.html'
+            template_name = 'form_partner.html'
         case 'Quản lý khách hàng':
             template_name = 'manager_partner.html'
         case _:
@@ -44,6 +44,12 @@ def login(request):
 
 def login_view(request):
     return render(request, 'login.html') 
+
+def parteners_view(request):
+    return render(request,'partners.html')
+
+def statics_view(request):
+    return render(request,'statics.html')
 
 def get_employee(request):
     employees = Employee.objects.all()
@@ -119,6 +125,7 @@ def get_movies(request):
             "release_year": mv.release_year,
             "genre": mv.genre,
             "description": mv.description,
+            "price": mv.price,
         }
         for mv in movies
     ]
@@ -133,6 +140,7 @@ def add_movie(request):
                 release_year=data['release_year'],
                 genre=data.get('genre', ''),
                 description=data.get('description', ''),
+                price=data.get('price', 0.0),
             )
             return JsonResponse({'message': 'Phim đã được thêm thành công!', 'movie_id': new_movie.movie_id})
         except Exception as e:
@@ -165,6 +173,7 @@ def edit_movie(request, movie_id):
             movie.release_year = data.get('release_year', movie.release_year)
             movie.genre = data.get('genre', movie.genre)
             movie.description = data.get('description', movie.description)
+            movie.price = data.get('price', movie.price) 
             movie.save()
 
             return JsonResponse({'message': 'Thông tin phim đã được cập nhật thành công!'}, status=200)
@@ -451,11 +460,12 @@ def delete_partner(request, partner_id):
 
 def get_partner(request, partner_id):
     try:
-        partner = Partner.objects.get(pk=partner_id)  # Sửa ở đây
+        partner = Partner.objects.get(pk=partner_id)
         return JsonResponse({'full_name': partner.full_name})
     except Partner.DoesNotExist:
         return JsonResponse({'error': 'Partner not found'}, status=404)
     
+
 def get_orders(request):
     try:
         partner_id = request.GET.get('partnerId')
@@ -465,7 +475,7 @@ def get_orders(request):
                 {
                     "order_id": order.order_id,
                     "movie_title": order.movie.title,
-                    "order_date": order.order_date,
+                    "order_date": order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
                 }
                 for order in orders
             ]
@@ -476,46 +486,54 @@ def get_orders(request):
         return JsonResponse({'error': str(e)}, status=500)
 
 
-
-
 def add_order(request):
     if request.method == 'POST':
         try:
             data = json.loads(request.body)  # Đọc dữ liệu JSON từ body
-            partner_id = data.get('partner_id')
+            partner_name = data.get('partner_name')  # Lấy partner_name thay vì partner_id
             movie_id = data.get('movie_id')
             order_date = data.get('order_date')
 
             # Chuyển đổi order_date từ chuỗi thành datetime
             order_date = datetime.strptime(order_date, '%Y-%m-%dT%H:%M')
 
-            if not partner_id or not movie_id or not order_date:
+            if not partner_name or not movie_id or not order_date:
                 return JsonResponse({'error': 'Thiếu thông tin để tạo đơn đặt phim'}, status=400)
 
-            partner = Partner.objects.get(pk=partner_id)
-            movie = Movie.objects.get(pk=movie_id)
+            # Lấy partner từ partner_name thay vì partner_id
+            try:
+                partner = Partner.objects.get(name=partner_name)
+            except Partner.DoesNotExist:
+                return JsonResponse({'error': 'Đối tác không tồn tại!'}, status=404)
 
+            # Kiểm tra movie
+            try:
+                movie = Movie.objects.get(pk=movie_id)
+            except Movie.DoesNotExist:
+                return JsonResponse({'error': 'Phim không tồn tại!'}, status=404)
+
+            # Lấy giá trị movie_price từ Movie
+            movie_price = movie.price if movie else 0.0
+
+            # Tạo đơn đặt phim
             new_order = Order.objects.create(
                 partner=partner,
                 movie=movie,
-                order_date=order_date
+                order_date=order_date,
+                movie_price=movie_price
             )
 
             return JsonResponse({
                 'message': 'Đơn đặt phim đã được thêm thành công!',
                 'order_id': new_order.order_id,
-                'order_date': new_order.order_date.strftime('%Y-%m-%d %H:%M:%S')
+                'order_date': new_order.order_date.strftime('%Y-%m-%d %H:%M:%S'),
+                'movie_price': new_order.movie_price
             })
 
-        except Partner.DoesNotExist:
-            return JsonResponse({'error': 'Khách hàng không tồn tại!'}, status=404)
-        except Movie.DoesNotExist:
-            return JsonResponse({'error': 'Phim không tồn tại!'}, status=404)
         except Exception as e:
             return JsonResponse({'error': str(e)}, status=400)
 
     return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
-
 
 
 
@@ -543,8 +561,13 @@ def edit_order(request, order_id):
             if 'movie_id' in data:
                 movie = Movie.objects.get(pk=data['movie_id'])
                 order.movie = movie
+
+            # Cập nhật giá trị movie_price (nếu có)
+            if 'movie_price' in data:
+                order.movie_price = data['movie_price']
+
             order.save()
-            
+
             return JsonResponse({'message': 'Thông tin đơn đặt phim đã được cập nhật thành công!'})
 
         except Order.DoesNotExist:
@@ -557,3 +580,33 @@ def edit_order(request, order_id):
             return JsonResponse({'error': str(e)}, status=500)
 
     return JsonResponse({'error': 'Phương thức không hợp lệ!'}, status=405)
+
+
+def get_customer_info(request):
+    if request.user.is_authenticated:
+        user = request.user
+        return JsonResponse({
+            'customer': {
+                'full_name': user.full_name,
+                'email': user.email,
+                'phone': user.profile.phone,
+                'password': user.password,  # Nếu muốn trả về mật khẩu, nhưng cần xử lý bảo mật tốt
+            }
+        })
+    else:
+        return JsonResponse({'error': 'Not authenticated'}, status=401)
+    
+    from django.shortcuts import render
+from .models import Order
+
+def order_statistics(request):
+    # Lấy tất cả các đơn đặt hàng
+    orders = Order.objects.select_related('movie', 'partner').all()
+    
+    # Tính tổng số tiền của các đơn đặt hàng
+    total_revenue = sum(order.movie_price for order in orders)
+
+    return render(request, 'order_statistics.html', {
+        'orders': orders,
+        'total_revenue': total_revenue,
+    })

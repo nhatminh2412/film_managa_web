@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông tin khách hàng</title>
+    <link rel="stylesheet" href="../static/style.css">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <div class="form-container">
+        <h2>Thông tin khách hàng</h2>
+
+        <!-- Form hiển thị thông tin khách hàng -->
+        <form id="customer-form">
+            <div class="form-group">
+                <label for="full-name">Full Name</label>
+                <input type="text" id="full-name" value="" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email" value="" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" value="" readonly>
+            </div>
+
+            <div class="form-group">
+                <label for="phone">Phone</label>
+                <input type="text" id="phone" value="" readonly>
+            </div>
+
+            <!-- Các nút chức năng -->
+            <div class="form-buttons">
+                <button type="button" class="edit-btn" id="edit-btn">Sửa</button>
+                <button type="button" class="view-orders-btn" id="view-orders-btn">Xem hóa đơn</button>
+                <button type="button" class="place-order-btn" id="place-order-btn">Đặt hóa đơn</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        // Khi bấm nút "Sửa", cho phép chỉnh sửa thông tin khách hàng
+        $('#edit-btn').click(function() {
+            $('#full-name').prop('readonly', false);
+            $('#email').prop('readonly', false);
+            $('#password').prop('readonly', false);
+            $('#phone').prop('readonly', false);
+        });
+
+        // Khi bấm nút "Xem hóa đơn", chuyển đến trang xem hóa đơn
+        $('#view-orders-btn').click(function() {
+            window.location.href = '/orders';  // Thay đổi link theo nhu cầu
+        });
+
+        // Khi bấm nút "Đặt hóa đơn", chuyển đến trang đặt hóa đơn
+        $('#place-order-btn').click(function() {
+            window.location.href = '/partners';  // Thay đổi link theo nhu cầu
+        });
+    });
+</script>
+
+</body>
+</html>
