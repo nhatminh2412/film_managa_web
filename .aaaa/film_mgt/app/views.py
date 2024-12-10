@@ -50,6 +50,8 @@ def parteners_view(request):
 
 def statics_view(request):
     return render(request,'statics.html')
+def orderpartner_view(request):
+    return render(request,'view_order.html')
 
 def get_employee(request):
     employees = Employee.objects.all()
@@ -609,4 +611,12 @@ def order_statistics(request):
     return render(request, 'order_statistics.html', {
         'orders': orders,
         'total_revenue': total_revenue,
+    })
+
+def partner_orders(request, partner_id):
+    # Lấy tất cả các đơn đặt hàng của một khách hàng theo partner_id
+    orders = Order.objects.filter(partner_id=partner_id).select_related('movie')
+
+    return render(request, 'partner_orders.html', {
+        'orders': orders,
     })

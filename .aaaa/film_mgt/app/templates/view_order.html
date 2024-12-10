@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thông Tin Hóa Đơn</title>
+    <link rel="stylesheet" href="../static/style.css">
+</head>
+<body>
+
+<div class="container">
+    <h2>Thông Tin Hóa Đơn của Khách Hàng</h2>
+
+    <table border="1">
+        <thead>
+            <tr>
+                <th>Tên Bộ Phim</th>
+                <th>Giá</th>
+                <th>Ngày Đặt</th>
+                <th>Trạng Thái</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% if orders %}
+                {% for order in orders %}
+                <tr>
+                    <td>{{ order.movie.title }}</td>
+                    <td>{{ order.movie_price }}</td>
+                    <td>{{ order.order_date }}</td>
+                    <td>{{ order.movie.status }}</td> <!-- Giả sử có trạng thái bộ phim -->
+                </tr>
+                {% endfor %}
+            {% else %}
+                <tr>
+                    <td colspan="4">Không có đơn hàng nào.</td>
+                </tr>
+            {% endif %}
+        </tbody>
+    </table>
+
+    <div>
+        <a href="/orders">Quay lại danh sách đơn hàng</a>  <!-- Link để quay lại danh sách đơn hàng -->
+    </div>
+</div>
+
+</body>
+</html>
